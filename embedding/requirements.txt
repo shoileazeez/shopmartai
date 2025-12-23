@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+requests
+torch
+Pillow
+open-clip-torch
+sentence-transformers
+numpy
