@@ -1,11 +1,11 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import torch
 from open_clip import create_model_and_transforms, tokenize
 from PIL import Image
 import requests
 from io import BytesIO
-import numpy as np
 from sentence_transformers import SentenceTransformer
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -13,14 +13,30 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 app = FastAPI(title="Embedding API")
 
 # -----------------------------
+# CORS Middleware
+# -----------------------------
+# For deployment, replace "*" with your actual frontend URL
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "https://your-frontend-domain.com",  # your deployed frontend
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,       # Allowed hosts
+    allow_credentials=True,
+    allow_methods=["*"],         # Allow all HTTP methods
+    allow_headers=["*"],         # Allow all headers
+)
+
+# -----------------------------
 # Load Models
 # -----------------------------
-# Image + text OpenCLIP model
 clip_model, _, clip_preprocess = create_model_and_transforms('ViT-B-32', pretrained='openai')
 clip_model.to(device)
 clip_model.eval()
 
-# Optional text-only model for semantic text embeddings
 text_model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # -----------------------------
@@ -29,7 +45,7 @@ text_model = SentenceTransformer('all-MiniLM-L6-v2')
 class EmbeddingRequest(BaseModel):
     type: str  # "text" or "image"
     content: str  # text content or image URL
-    model: str = "default"  # optional: choose different models
+    model: str = "default"
 
 # -----------------------------
 # Utility Functions
