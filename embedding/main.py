@@ -36,7 +36,7 @@ HEADERS_AUTH = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 TEXT_API_URL = "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-large/pipeline/feature-extraction"
 
 # Image model (local DINOv2)
-IMAGE_MODEL_NAME = "facebook/dinov2-base"
+IMAGE_MODEL_NAME = "facebook/dinov2-small"
 processor = AutoImageProcessor.from_pretrained(IMAGE_MODEL_NAME)
 image_model = AutoModel.from_pretrained(IMAGE_MODEL_NAME)
 

@@ -1,3 +1,5 @@
+'use client';
+
 import { Header } from "../ui/Header";
 import { HeaderVariant } from "../types/layout";
 import { useAuth } from "./AuthContext";

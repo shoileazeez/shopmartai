@@ -1,22 +1,17 @@
 import { ReactNode } from "react";
 import { GlobalLayout } from "@/src/components/layout/auth";
-import "../styles/globals.css";
+import { AuthProvider } from "@/src/components/layout/AuthContext"; 
+import "./globals.css";
 
 export const metadata = {
   title: "ShopSmart AI",
   description: "Your AI-powered shopping platform",
+  metadataBase: new URL("http://localhost:3000"),
   openGraph: {
     title: "ShopSmart AI",
     description: "Your AI-powered shopping platform",
-    url: "https://example.com",
     siteName: "ShopSmart AI",
-    images: [
-      {
-        url: "/social-share-image.png",
-        width: 1200,
-        height: 630,
-      },
-    ],
+    images: [{ url: "/social-share-image.png", width: 1200, height: 630 }],
     type: "website",
   },
   twitter: {
@@ -28,5 +23,13 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return <GlobalLayout>{children}</GlobalLayout>;
+  return (
+    <html lang="en">
+      <body>
+        <AuthProvider>
+          <GlobalLayout>{children}</GlobalLayout>
+        </AuthProvider>
+      </body>
+    </html>
+  );
 }

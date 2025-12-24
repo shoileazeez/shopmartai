@@ -1,120 +1,75 @@
+"use client";
+
 import { useState } from "react";
+import Link from "next/link";
 
 interface NavItem {
   label: string;
   href: string;
 }
 
-interface PublicHeaderConfig {
-  title: string;
-  sections: {
-    about: NavItem[];
-    newArrivals: NavItem[];
-    products: NavItem[];
-    cta: NavItem[];
-  };
-}
-
-const publicHeaderConfig: PublicHeaderConfig = {
-  title: "ShopSmart AI",
-  sections: {
-    about: [{ label: "About", href: "/about" }],
-    newArrivals: [{ label: "New Arrivals", href: "/new-arrivals" }],
-    products: [{ label: "Products", href: "/products" }],
-    cta: [
-      { label: "Login", href: "/login" },
-      { label: "Register", href: "/register" },
-    ],
-  },
-};
+const sections: NavItem[] = [
+  { label: "New Arrivals", href: "/new-arrivals" },
+  { label: "Products", href: "/products" },
+  { label: "About", href: "/about" },
+  { label: "Login", href: "/login" },
+  { label: "Register", href: "/register" },
+];
 
 export default function PublicHeader() {
-  const { title, sections } = publicHeaderConfig;
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   return (
-    <header className="bg-white shadow-md">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between py-3">
-          {/* Left: Title */}
-          <div className="text-2xl font-bold">{title}</div>
+    <header className="sticky top-0 z-50 bg-white border-b">
+      <div className="container-app">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link href="/" className="text-xl font-bold text-purple-600">
+            ShopSmart AI
+          </Link>
 
-          {/* Center: Desktop Search */}
-          <div className="hidden md:flex flex-1 px-4">
+          {/* Search */}
+          <div className="hidden md:flex flex-1 mx-6">
             <input
-              type="text"
-              placeholder="Search..."
-              className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
+              className="input"
+              placeholder="Describe a product or upload an image..."
             />
           </div>
 
-          {/* Right: Desktop Nav */}
-          <div className="hidden md:flex items-center space-x-4">
-            {Object.values(sections).map((group, index) =>
-              group.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  {item.label}
-                </a>
-              ))
-            )}
-          </div>
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-6">
+            {sections.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="text-sm font-medium text-neutral-700 hover:text-purple-600"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile */}
           <button
-            className="md:hidden p-2 rounded-md focus:outline-none focus:ring"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden"
+            onClick={() => setOpen(!open)}
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              {mobileMenuOpen ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              )}
-            </svg>
+            ☰
           </button>
         </div>
 
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden pb-4 space-y-2">
-            {/* Mobile Search */}
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
-            />
-
-            {/* Mobile Nav Links */}
-            {Object.values(sections).map((group, index) =>
-              group.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className="block text-blue-600 hover:text-blue-800 px-2 py-1"
-                >
-                  {item.label}
-                </a>
-              ))
-            )}
+        {open && (
+          <div className="md:hidden py-4 space-y-2">
+            <input className="input" placeholder="Search..." />
+            {sections.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="block px-2 py-2 rounded hover:bg-neutral-100"
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
         )}
       </div>

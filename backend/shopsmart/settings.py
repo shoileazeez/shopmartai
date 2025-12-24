@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
+import dj_database_url
+from dotenv import load_dotenv
+
+load_dotenv() 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -49,9 +54,12 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    
+    "pgvector.django",
 
     # Local
     'accounts',
+    'product',
 ]
 
 MIDDLEWARE = [
@@ -62,6 +70,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'shopsmart.urls'
@@ -88,10 +97,10 @@ WSGI_APPLICATION = 'shopsmart.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=os.getenv("DATABASE_URL"),
+        conn_max_age=600
+    )
 }
 
 
@@ -133,14 +142,26 @@ STATIC_URL = 'static/'
 
 SITE_ID = 1
 
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_UNIQUE_EMAIL = True
 
-ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+# ======================
+# django-allauth config
+# ======================
+
+# ACCOUNT_USER_MODEL_USERNAME_FIELD = 
+
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True
+
+# ACCOUNT_LOGIN_METHOD = "email"
+
+# Signup fields (NO username)
+ACCOUNT_SIGNUP_FIELDS: list[str] = [
+    "email*",
+    "password1",
+    "password2",
+]
+
 
 REST_USE_JWT = True
 
@@ -167,6 +188,24 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
 }
 
 CSRF_COOKIE_HTTPONLY = False
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+    }
+}
+
+PASSWORD_RESET_TIMEOUT = 3600
+
+DJANGO_REST_AUTH = {
+    "PASSWORD_RESET_CONFIRM_URL": "http://localhost:3000/reset-password/{uid}/{token}",
+}
+
+LOGIN_REDIRECT_URL = "http://localhost:3000/auth/post-auth"
+LOGOUT_REDIRECT_URL = "http://localhost:3000/login"
