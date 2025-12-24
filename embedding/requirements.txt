@@ -2,6 +2,7 @@ fastapi==0.112.0
 uvicorn[standard]==0.23.2
 requests==2.32.0
 python-dotenv==1.0.0
-torch==2.1.0
+numpy<2
+torch==2.3.0 
 transformers==4.57.3
 Pillow==10.0.0
