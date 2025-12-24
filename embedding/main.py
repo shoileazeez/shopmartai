@@ -1,90 +1,107 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import torch
-from open_clip import create_model_and_transforms, tokenize
-from PIL import Image
 import requests
-from io import BytesIO
-from sentence_transformers import SentenceTransformer
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+import torch
+from transformers import AutoImageProcessor, AutoModel
+from PIL import Image
+import io
+import math
 
 app = FastAPI(title="Embedding API")
 
-# -----------------------------
-# CORS Middleware
-# -----------------------------
-# For deployment, replace "*" with your actual frontend URL
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "https://your-frontend-domain.com",  # your deployed frontend
-]
-
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # Allowed hosts
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],         # Allow all HTTP methods
-    allow_headers=["*"],         # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# -----------------------------
-# Load Models
-# -----------------------------
-clip_model, _, clip_preprocess = create_model_and_transforms('ViT-B-32', pretrained='openai')
-clip_model.to(device)
-clip_model.eval()
+# ---------------------------------
+# Hugging Face config
+# ---------------------------------
+HF_API_TOKEN = os.getenv("HF_API_TOKEN")
+if not HF_API_TOKEN:
+    raise RuntimeError("HF_API_TOKEN not set")
 
-text_model = SentenceTransformer('all-MiniLM-L6-v2')
+HEADERS_AUTH = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
-# -----------------------------
-# Request Schema
-# -----------------------------
+# Text inference endpoint
+TEXT_API_URL = "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-large/pipeline/feature-extraction"
+
+# Image model (local DINOv2)
+IMAGE_MODEL_NAME = "facebook/dinov2-base"
+processor = AutoImageProcessor.from_pretrained(IMAGE_MODEL_NAME)
+image_model = AutoModel.from_pretrained(IMAGE_MODEL_NAME)
+
+# ---------------------------------
+# Schema
+# ---------------------------------
 class EmbeddingRequest(BaseModel):
-    type: str  # "text" or "image"
-    content: str  # text content or image URL
-    model: str = "default"
+    type: str      # "text" | "image"
+    content: str   # text or image URL
 
-# -----------------------------
-# Utility Functions
-# -----------------------------
-def embed_text_openclip(text: str):
-    tokens = tokenize([text]).to(device)
-    with torch.no_grad():
-        emb = clip_model.encode_text(tokens)
-        emb = emb / emb.norm(dim=-1, keepdim=True)
-    return emb.cpu().numpy()[0].tolist()
-
-def embed_text_transformers(text: str):
-    emb = text_model.encode(text, normalize_embeddings=True)
-    return emb.tolist()
+# ---------------------------------
+# Helpers
+# ---------------------------------
+def embed_text(text: str):
+    res = requests.post(
+        TEXT_API_URL,
+        headers=HEADERS_AUTH,
+        json={"inputs": text},
+        timeout=30,
+    )
+    if res.status_code != 200:
+        raise HTTPException(500, res.text)
+    return res.json()
 
 def embed_image(image_url: str):
     try:
-        response = requests.get(image_url, timeout=5)
-        image = Image.open(BytesIO(response.content)).convert("RGB")
-        image = clip_preprocess(image).unsqueeze(0).to(device)
-        with torch.no_grad():
-            emb = clip_model.encode_image(image)
-            emb = emb / emb.norm(dim=-1, keepdim=True)
-        return emb.cpu().numpy()[0].tolist()
+        img_bytes = requests.get(image_url, timeout=10).content
+        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        img = img.resize((224, 224))
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(400, f"Image download failed: {str(e)}")
 
-# -----------------------------
-# Embedding Endpoint
-# -----------------------------
+    inputs = processor(images=img, return_tensors="pt")
+    with torch.no_grad():
+        outputs = image_model(**inputs)
+
+    embedding = outputs.last_hidden_state.mean(dim=1).squeeze(0).tolist()
+
+    # normalize vector
+    norm = math.sqrt(sum(x*x for x in embedding))
+    if norm > 0:
+        embedding = [x / norm for x in embedding]
+
+    return embedding
+
+# ---------------------------------
+# Endpoint
+# ---------------------------------
 @app.post("/embed")
 def create_embedding(req: EmbeddingRequest):
     if req.type == "text":
-        if req.model == "clip":
-            vector = embed_text_openclip(req.content)
-        else:
-            vector = embed_text_transformers(req.content)
+        vector = embed_text(req.content)
+        # Ensure vector is a list
+        if isinstance(vector, float):
+            vector = [vector]
     elif req.type == "image":
         vector = embed_image(req.content)
+        # Ensure vector is a list
+        if isinstance(vector, float):
+            vector = [vector]
     else:
-        raise HTTPException(status_code=400, detail="Invalid type. Use 'text' or 'image'.")
-    return {"embedding": vector}
+        raise HTTPException(400, "type must be 'text' or 'image'")
+
+    return {
+        "embedding": vector,
+        "dimension": len(vector),
+    }
+
