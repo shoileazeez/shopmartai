@@ -1,6 +1,6 @@
 import requests
 
-BASE = "http://127.0.0.1:8000/embed"
+BASE = "https://shopmartai.onrender.com/embed"
 
 # ---- Test text embedding ----
 text_payload = {"type": "text", "content": "red sneakers for men"}
